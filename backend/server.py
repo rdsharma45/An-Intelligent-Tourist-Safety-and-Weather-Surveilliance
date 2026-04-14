@@ -560,15 +560,37 @@ async def calculate_route(request: RouteRequest, current_user: dict = Depends(ge
             print("🔥 PREDICTION:", avg_risk)
 
             # -------- Risk Level --------
-            if avg_risk < 0.3:
+            if avg_risk < 0.25:
                 risk_level = "Safe"
-                safety_tips = ["Route is generally safe", "Keep emergency contacts handy", "Drive within speed limits"]
-            elif avg_risk < 0.6:
+                safety_tips = [
+                    "Route is generally safe",
+                    "Keep emergency contacts handy",
+                    "Drive within speed limits"
+                ]
+
+            elif avg_risk < 0.45:
+                risk_level = "Low"
+                safety_tips = [
+                    "Minor risks present",
+                    "Stay alert while traveling",
+                    "Follow traffic rules carefully"
+                ]
+
+            elif avg_risk < 0.65:
                 risk_level = "Moderate"
-                safety_tips = ["Exercise caution", "Travel during daylight", "Stay on highways"]
+                safety_tips = [
+                    "Exercise caution",
+                    "Travel during daylight",
+                    "Stay on highways"
+                ]
+
             else:
                 risk_level = "High-Risk"
-                safety_tips = ["⚠️ Consider alternate route", "Travel only if necessary", "Keep emergency supplies"]
+                safety_tips = [
+                    "⚠️ Consider alternate route",
+                    "Travel only if necessary",
+                    "Keep emergency supplies"
+                ]
 
             route_options.append(
                 RouteOption(
@@ -587,71 +609,8 @@ async def calculate_route(request: RouteRequest, current_user: dict = Depends(ge
     except Exception as e:
         logger.error(f"Route calculation failed: {e}")
         raise HTTPException(status_code=500, detail="Route calculation failed")
-# @api_router.post("/location/search", response_model=List[LocationSearchResult])
-# async def search_location(request: LocationSearchRequest, current_user: dict = Depends(get_current_user)):
 
-#     suggestions = [
-#         {"name": "Kedarnath", "lat": 30.7346, "lng": 79.0669, "display_name": "Kedarnath, Uttarakhand"},
-#         {"name": "Badrinath", "lat": 30.7433, "lng": 79.4930, "display_name": "Badrinath, Uttarakhand"},
-#         {"name": "Rishikesh", "lat": 30.0869, "lng": 78.2676, "display_name": "Rishikesh, Uttarakhand"},
-#         {"name": "Dehradun", "lat": 30.3165, "lng": 78.0322, "display_name": "Dehradun, Uttarakhand"},
-#         {"name": "Mussoorie", "lat": 30.4598, "lng": 78.0644, "display_name": "Mussoorie, Uttarakhand"},
-#         {"name": "Haridwar", "lat": 29.9457, "lng": 78.1642, "display_name": "Haridwar, Uttarakhand"},
-#         {"name": "Delhi", "lat": 28.6139, "lng": 77.2090, "display_name": "Delhi, India"},
-#         {"name": "Shimla", "lat": 31.1048, "lng": 77.1734, "display_name": "Shimla, Himachal Pradesh"},
-#         {"name": "Manali", "lat": 32.2432, "lng": 77.1892, "display_name": "Manali, Himachal Pradesh"},
-#     ]
 
-#     try:
-#         url = "https://nominatim.openstreetmap.org/search"
-
-#         params = {
-#             "q": request.query,
-#             "format": "json",
-#             "limit": 5
-#         }
-
-#         headers = {
-#             "User-Agent": "TouristSafetyApp/1.0"
-#         }
-
-#         response = requests.get(url, params=params, headers=headers, timeout=10)
-#         results = response.json()
-
-#         locations = []
-
-#         for result in results:
-#             locations.append(
-#                 LocationSearchResult(
-#                     name=result.get("display_name").split(",")[0],
-#                     lat=float(result["lat"]),
-#                     lng=float(result["lon"]),
-#                     display_name=result["display_name"]
-#                 )
-#             )
-
-#         # If API returns results → return them
-#         if locations:
-#             return locations
-
-#     except Exception as e:
-#         logger.error(f"Location search error: {e}")
-
-#     # Fallback suggestions
-#     filtered = [
-#         s for s in suggestions
-#         if request.query.lower() in s["name"].lower()
-#     ]
-
-#     return [
-#         LocationSearchResult(
-#             name=s["name"],
-#             lat=s["lat"],
-#             lng=s["lng"],
-#             display_name=s["display_name"]
-#         )
-#         for s in filtered[:5]
-#     ]
 @api_router.post("/location/search", response_model=List[LocationSearchResult])
 async def search_location(request: LocationSearchRequest, current_user: dict = Depends(get_current_user)):
 
@@ -784,15 +743,10 @@ async def predict_risk(request: RiskPredictionRequest, current_user: dict = Depe
 
     from datetime import datetime
 
-    # -----------------------------
-    # FIX COORDINATES
-    # -----------------------------
     start_lat = request.start_lat or request.lat
     start_lng = request.start_lng or request.lng
 
-    # -----------------------------
-    # REGION CHECK
-    # -----------------------------
+    
     if not is_in_uttarakhand(start_lat, start_lng):
         return RiskPredictionResponse(
             risk_level="Region Not Supported",
@@ -801,9 +755,7 @@ async def predict_risk(request: RiskPredictionRequest, current_user: dict = Depe
             nearby_incidents=0
         )
 
-    # -----------------------------
-    # INCIDENTS
-    # -----------------------------
+   
     incidents = await db.incidents.find({}, {"_id": 0}).to_list(1000)
 
     nearby_count = 0
@@ -873,10 +825,7 @@ async def predict_risk(request: RiskPredictionRequest, current_user: dict = Depe
     print("🔥 PREDICTION:", risk_score)
     print("Nearby Incidents:", nearby_count)
 
-    # -----------------------------
-    # RISK LEVEL
-    # -----------------------------
-    # Risk classification
+
     if risk_score < 0.25:
         risk_level = "Safe"
         recommendations = [
